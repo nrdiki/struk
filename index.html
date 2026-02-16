@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Thermal Receipt Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+body { font-family: monospace; width: 280px; margin: auto; }
+input { width: 100%; margin-bottom: 5px; font-family: monospace; }
+button { width: 100%; padding: 6px; margin-bottom: 5px; }
+.receipt { margin-top: 20px; font-size: 12px; width: 100%; background: #fff; padding: 5px; }
+.center { text-align: center; }
+hr { border: none; border-top: 1px dashed black; }
+.item-line { display: flex; justify-content: space-between; }
+@media print { button, input, h3 { display: none; } body { width: 100%; } }
+</style>
+</head>
+<body>
+
+<h3>Generator Struk Thermal</h3>
+
+<input type="text" id="store" placeholder="Nama Toko">
+<input type="text" id="address" placeholder="Alamat Toko">
+<input type="text" id="invoice" placeholder="No Faktur">
+<input type="text" id="cashier" placeholder="Nama Kasir">
+
+<label>Tanggal:</label>
+<input type="date" id="date">
+<label>Jam:</label>
+<input type="time" id="time">
+
+<hr>
+
+<input type="text" id="item" placeholder="Nama Barang">
+<input type="number" id="price" placeholder="Harga" step="0.01">
+<input type="number" id="qty" placeholder="Qty (boleh desimal)" step="0.01">
+
+<button onclick="addItem()">Tambah Barang</button>
+<hr>
+
+<input type="number" id="payment" placeholder="Pembayaran (Rp)">
+<button onclick="renderReceipt()">Update Struk</button>
+<button onclick="saveImage()">Save as Image (Thermal PNG)</button>
+<button onclick="window.print()">Print</button>
+<button onclick="resetAll()">Ulangi / Reset</button>
+
+<div class="receipt" id="receipt"></div>
+
+<script>
+let items = [];
+
+// Set default tanggal & jam sekarang
+function setDefaultDateTime() {
+    const now = new Date();
+    document.getElementById("date").value = now.toISOString().split("T")[0];
+    document.getElementById("time").value = now.toTimeString().slice(0,5);
+}
+setDefaultDateTime();
+
+function addItem() {
+    const item = document.getElementById("item").value;
+    const price = parseFloat(document.getElementById("price").value);
+    const qty = parseFloat(document.getElementById("qty").value);
+    if (!item || !price || !qty) return;
+
+    items.push({ item, price, qty });
+    document.getElementById("item").value = "";
+    document.getElementById("price").value = "";
+    document.getElementById("qty").value = "";
+
+    renderReceipt();
+}
+
+function renderReceipt() {
+    const store = document.getElementById("store").value;
+    const address = document.getElementById("address").value;
+    const invoice = document.getElementById("invoice").value;
+    const cashier = document.getElementById("cashier").value;
+    const date = document.getElementById("date").value;
+    const time = document.getElementById("time").value;
+    const payment = parseFloat(document.getElementById("payment").value) || 0;
+
+    let total = 0;
+    let itemsHTML = "";
+
+    items.forEach((data) => {
+        const subtotal = data.price * data.qty;
+        total += subtotal;
+        itemsHTML += `
+            <div>${data.item}</div>
+            <div class="item-line">
+                <span>${data.qty} x ${data.price.toLocaleString()}</span>
+                <span>${subtotal.toLocaleString()}</span>
+            </div>
+        `;
+    });
+
+    const change = payment - total;
+
+    document.getElementById("receipt").innerHTML = `
+        <div class="center">
+            <b>${store}</b><br>
+            ${address}
+        </div>
+        <hr>
+        No Faktur : ${invoice}<br>
+        Kasir     : ${cashier}<br>
+        ${date} ${time}
+        <hr>
+        ${itemsHTML}
+        <hr>
+        <div class="item-line">
+            <b>TOTAL</b>
+            <b>Rp ${total.toLocaleString()}</b>
+        </div>
+        <div class="item-line">
+            <b>Bayar</b>
+            <b>Rp ${payment.toLocaleString()}</b>
+        </div>
+        <div class="item-line">
+            <b>Kembalian</b>
+            <b>Rp ${change >= 0 ? change.toLocaleString() : 0}</b>
+        </div>
+        <hr>
+        <div class="center">Terima Kasih</div>
+    `;
+}
+
+function saveImage() {
+    const receipt = document.getElementById("receipt");
+    const width = receipt.scrollWidth;
+    const height = receipt.scrollHeight;
+
+    html2canvas(receipt, {
+        scale: 3,
+        width: width,
+        height: height,
+        backgroundColor: "#ffffff",
+        useCORS: true
+    }).then(canvas => {
+        const link = document.createElement("a");
+        link.download = "struk-thermal.png";
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+    });
+}
+
+function resetAll() {
+    items = [];
+    document.getElementById("store").value = "";
+    document.getElementById("address").value = "";
+    document.getElementById("invoice").value = "";
+    document.getElementById("cashier").value = "";
+    document.getElementById("item").value = "";
+    document.getElementById("price").value = "";
+    document.getElementById("qty").value = "";
+    document.getElementById("payment").value = "";
+    setDefaultDateTime();
+    document.getElementById("receipt").innerHTML = "";
+}
+</script>
+
+</body>
+</html>
